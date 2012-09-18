@@ -28,7 +28,7 @@ describe("pecs", function(){
             expect($mocker)->to_be_an_instance_of('pecs\\Mocker');
         });
 
-        it("should fail if non existant interface is to be mocked", function(){
+        it("should fail if non existant interface or class is to be mocked", function(){
             expect(function(){
                     \pecs\mock('NonExistantClassToMock');
                 })->to_throw();

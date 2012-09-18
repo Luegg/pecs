@@ -602,7 +602,6 @@ class Mocker{
 namespace pecs\mocks;
 
 class <mock> <inherit>{
-<properties>
 <methods>
 }
 EOT;
@@ -642,18 +641,15 @@ EOT;
             $inherit = 'extends \\' . $className;
         }
 
-        $propertiesCode = array();
         $methodsCode = array();
         foreach($this->methodMockers as $methodMocker){
-            $propertiesCode[] = $methodMocker->generateProperty();
-            $methodsCode[] = $methodMocker->generateMethod();
+            $methodsCode[] = $methodMocker->generate();
         }
-        $propertiesCode = implode(PHP_EOL, $propertiesCode);
         $methodsCode = implode(PHP_EOL, $methodsCode);
 
         $code = str_replace(
-                array('<mock>', '<inherit>', '<properties>','<methods>'),
-                array($mockName, $inherit, $propertiesCode, $methodsCode),
+                array('<mock>', '<inherit>', '<methods>'),
+                array($mockName, $inherit, $methodsCode),
                 self::$classTemplate
             );
 
@@ -713,12 +709,8 @@ EOT;
         return $this;
     }
 
-    function generateMethod(){
+    function generate(){
         return str_replace('<methodName>', $this->methodName, self::$methodTemplate);
-    }
-
-    function generateProperty(){
-        return str_replace('<methodName>', $this->methodName, 'public $<methodName>;');
     }
 
     function createWatchedProperty($mock){
