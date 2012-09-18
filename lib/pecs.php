@@ -51,6 +51,10 @@ function watched($func) {
     return new Watched($func);
 }
 
+function mock($className) {
+    return new Mocker($className);
+}
+
 /// Wraps around a function and tracks when it is called.
 class Watched {
     public $invokeArgs = array();
@@ -589,5 +593,151 @@ class HtmlFormatter extends Formatter {
         echo '<div id="banner">';
         parent::banner($passed, $failed);
         echo '</div>';
+    }
+}
+
+class Mocker{
+
+    private static $classTemplate = <<<'EOT'
+namespace pecs\mocks;
+
+class <mock> <inherit>{
+<properties>
+<methods>
+}
+EOT;
+
+    private static $counter = 0;
+
+    private $reflClass;
+
+    private $methodMockers = array();
+
+    function __construct($className){
+        if(!class_exists($className) && !interface_exists($className)){
+            throw new \Exception('pecs\mock() must be passed a class name or an interface ' .
+                'name, "' . $className . '" is not');
+        }
+        $this->reflClass = new \ReflectionClass($className);
+
+        $methods = $this->reflClass->getMethods(\ReflectionMethod::IS_PUBLIC);
+        foreach($methods as $method){
+            $this->method($method->getName());
+        }
+    }
+
+    function method($methodName){
+        $methodMocker = new MethodMocker($methodName, $this);
+        $this->methodMockers[$methodName] = $methodMocker;
+        return $methodMocker;
+    }
+
+    function create(){
+        $className = $this->reflClass->getName();
+        $mockName = 'Mock_' . md5($className . self::$counter++);
+
+        if($this->reflClass->isInterface()){
+            $inherit = 'implements \\' . $className;
+        } else {
+            $inherit = 'extends \\' . $className;
+        }
+
+        $propertiesCode = array();
+        $methodsCode = array();
+        foreach($this->methodMockers as $methodMocker){
+            $propertiesCode[] = $methodMocker->generateProperty();
+            $methodsCode[] = $methodMocker->generateMethod();
+        }
+        $propertiesCode = implode(PHP_EOL, $propertiesCode);
+        $methodsCode = implode(PHP_EOL, $methodsCode);
+
+        $code = str_replace(
+                array('<mock>', '<inherit>', '<properties>','<methods>'),
+                array($mockName, $inherit, $propertiesCode, $methodsCode),
+                self::$classTemplate
+            );
+
+        eval($code);
+
+        $mockClass = 'pecs\\mocks\\' . $mockName;
+        $mock = new $mockClass();
+
+        foreach($this->methodMockers as $methodMocker){
+            $methodMocker->createWatchedProperty($mock);
+        }
+
+        return $mock;
+    }
+}
+
+class MethodMocker{
+
+    private static $methodTemplate = <<<'EOT'
+    public function <methodName>(){
+        return call_user_func_array($this-><methodName>, func_get_args());
+    }
+EOT;
+
+    private $methodName;
+
+    private $mocker;
+
+    private $callCases = array();
+
+    private $currentCase;
+
+    function __construct($methodName, Mocker $mocker){
+        $this->methodName = $methodName;
+        $this->mocker = $mocker;
+    }
+
+    function on(){
+        $this->currentCase = array('on' => func_get_args());
+        return $this;
+    }
+
+    function returns($value){
+        $this->currentCase['returns'] = $value;
+        $this->callCases[] = $this->currentCase;
+        $this->currentCase = null;
+        return $this;
+    }
+
+    function throws($exceptionClass = 'Exception', $message = null){
+        $this->currentCase['throws'] = null;
+        if(class_exists($exceptionClass)){
+            $this->currentCase['throws'] = new $exceptionClass($message);
+        }
+        $this->callCases[] = $this->currentCase;
+        $this->currentCase = null;
+        return $this;
+    }
+
+    function generateMethod(){
+        return str_replace('<methodName>', $this->methodName, self::$methodTemplate);
+    }
+
+    function generateProperty(){
+        return str_replace('<methodName>', $this->methodName, 'public $<methodName>;');
+    }
+
+    function createWatchedProperty($mock){
+        $methodName = $this->methodName;
+        $callCases = $this->callCases;
+        $mock->$methodName = watched(function() use ($callCases){
+            foreach ($callCases as $callCase) {
+                if($callCase['on'] === func_get_args()){
+                    if(isset($callCase['returns'])){
+                        return $callCase['returns'];
+                    } else if(isset($callCase['throws'])){
+                        throw $callCase['throws'];
+                    }
+                }
+            }
+        });
+    }
+
+    function __call($name, $args){
+        return call_user_func_array(array($this->mocker, $name), $args);
     }
 }

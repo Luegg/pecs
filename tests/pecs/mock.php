@@ -21,39 +21,33 @@ class ClassToMock implements InterfaceToMock{
 
 describe("pecs", function(){
 
-    describe("mock", function(){
+    describe("mock()", function(){
 
         it("should return a Mocker", function(){
             $mocker = \pecs\mock('ClassToMock');
             expect($mocker)->to_be_an_instance_of('pecs\\Mocker');
+        });
 
-            expect(\pecs\mock('NonExistantClassToMock'))->to_throw('Exception');
+        it("should fail if non existant interface is to be mocked", function(){
+            expect(function(){
+                    \pecs\mock('NonExistantClassToMock');
+                })->to_throw();
         });
     });
 
     describe("Mocker", function(){
 
-        it("should create a new instance of the given interface", function(){
+        it("should create a new instance of the given class", function(){
             $mock = \pecs\mock('ClassToMock')->create();
             
             expect($mock)->to_be_an_instance_of('ClassToMock');
             expect($mock)->to_be_an_instance_of('InterfaceToMock');
+        });
 
+        it("should create a new instance of the given interface", function(){
             $mock = \pecs\mock('InterfaceToMock')->create();
 
             expect($mock)->to_be_an_instance_of('InterfaceToMock');
-        });
-
-        it("should have watched methods", function(){
-            $mock = \pecs\mock('ClassToMock')->create();
-
-            $mock->methodA();
-            expect($mock->methodA)->to_have_been_called();
-
-            expect($mock->privateMethod())->to_throw();
-
-            $mock->methodA(1, 'two');
-            expect($mock->methodA)->to_have_been_called_with(1, 'two');
         });
 
         it("should return a MethodMocker", function(){
@@ -61,6 +55,22 @@ describe("pecs", function(){
                 ->method('methodA');
 
             expect($methodMocker)->to_be_an_instance_of('pecs\\MethodMocker');
+        });
+        
+    });
+
+    describe("mock", function(){
+
+        it("should have watched functions as properties which are called when method is invoked", function(){
+            $mock = \pecs\mock('ClassToMock')->create();
+
+            $mock->methodA();
+            expect($mock->methodA)->to_have_been_called();
+
+            expect(isset($mock->privateMethod))->to_be(false);
+
+            $mock->methodA(1, 'two');
+            expect($mock->methodA)->to_have_been_called_with(1, 'two');
         });
 
         it("should return a given value on a given argument list", function(){
@@ -85,13 +95,19 @@ describe("pecs", function(){
                 ->method('methodA')
                     ->on()->throws()
                     ->on(null)->throws('LengthException')
-                    ->on()->throws('LogicException', 'this one failed')
+                    ->on(null, null)->throws('LogicException', 'this one failed')
                 ->create();
 
-            expect($mock->methodA())->to_throw('Exception');
-            expect($mock->methodA())->to_throw('LengthException');
-            expect($mock->methodA())->to_throw('LogicException', 'this one failed');
+            expect(function() use ($mock){
+                    $mock->methodA();
+                })->to_throw();
+            expect(function() use ($mock){
+                    $mock->methodA(null);
+                })->to_throw('LengthException');
+            expect(function() use ($mock){
+                    $mock->methodA(null, null);
+                })->to_throw('LogicException', 'this one failed');
         });
-        
+    
     });
 });
