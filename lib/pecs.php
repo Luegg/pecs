@@ -633,7 +633,8 @@ EOT;
 
     function create(){
         $className = $this->reflClass->getName();
-        $mockName = 'Mock_' . md5($className . self::$counter++);
+        $mockName = 'Mock_' . str_replace('\\', '_', $className) .
+            '_' . self::$counter++;
 
         if($this->reflClass->isInterface()){
             $inherit = 'implements \\' . $className;

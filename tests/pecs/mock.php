@@ -18,6 +18,9 @@ class ClassToMock implements InterfaceToMock{
     }
 }
 
+class ExtenderClass extends ClassToMock{
+}
+
 
 describe("pecs", function(){
 
@@ -50,27 +53,41 @@ describe("pecs", function(){
             expect($mock)->to_be_an_instance_of('InterfaceToMock');
         });
 
+        it("should also work within namespaces", function(){
+            $mock = \pecs\mock('pecs\\Formatter')->create();
+
+            expect($mock)->to_be_an_instance_of('pecs\\Formatter');
+        });
+
         it("should return a MethodMocker", function(){
             $methodMocker = \pecs\mock('ClassToMock')
                 ->method('methodA');
 
             expect($methodMocker)->to_be_an_instance_of('pecs\\MethodMocker');
         });
-        
     });
 
     describe("mock", function(){
 
-        it("should have watched functions as properties which are called when method is invoked", function(){
+        it("should have watched functions as properties for each method", function(){
             $mock = \pecs\mock('ClassToMock')->create();
 
             $mock->methodA();
+            $mock->methodB();
             expect($mock->methodA)->to_have_been_called();
+            expect($mock->methodB)->to_have_been_called();
 
             expect(isset($mock->privateMethod))->to_be(false);
 
             $mock->methodA(1, 'two');
             expect($mock->methodA)->to_have_been_called_with(1, 'two');
+
+            $mock = \pecs\mock('ExtenderClass')->create();
+
+            $mock->methodA();
+            $mock->methodB();
+            expect($mock->methodA)->to_have_been_called();
+            expect($mock->methodB)->to_have_been_called();
         });
 
         it("should return a given value on a given argument list", function(){
