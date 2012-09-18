@@ -1,7 +1,7 @@
 <?php
 
 interface InterfaceToMock{
-    function methodC();
+    function methodA();
 }
 
 class ClassToMock implements InterfaceToMock{
@@ -38,7 +38,7 @@ describe("pecs", function(){
             expect($mock)->to_be_an_instance_of('InterfaceToMock');
 
             $mock = \pecs\mock('InterfaceToMock')->create();
-            
+
             expect($mock)->to_be_an_instance_of('InterfaceToMock');
         });
 
