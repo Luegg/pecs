@@ -25,7 +25,9 @@ describe("pecs", function(){
 
         it("should return a Mocker", function(){
             $mocker = \pecs\mock('ClassToMock');
-            epxtec($mocker)->to_be_an_instance_of('pecs\\Mocker');
+            expect($mocker)->to_be_an_instance_of('pecs\\Mocker');
+
+            expect(\pecs\mock('NonExistantClassToMock'))->to_throw('Exception');
         });
     });
 
@@ -54,14 +56,21 @@ describe("pecs", function(){
             expect($mock->methodA)->to_have_been_called_with(1, 'two');
         });
 
+        it("should return a MethodMocker", function(){
+            $methodMocker = \pecs\mock('ClassToMock')
+                ->method('methodA');
+
+            expect($methodMocker)->to_be_an_instance_of('pecs\\MethodMocker');
+        });
+
         it("should return a given value on a given argument list", function(){
             $mock = \pecs\mock('ClassToMock')
                 ->method('methodA')
-                    ->on()->return('none')
-                    ->on(1)->return('one')
-                    ->on(1, 2)->return('three')
+                    ->on()->returns('none')
+                    ->on(1)->returns('one')
+                    ->on(1, 2)->returns('three')
                 ->method('methodB')
-                    ->on(array('one', 'two', 'three'))->return(6)
+                    ->on(array('one', 'two', 'three'))->returns(6)
                 ->create();
 
             expect($mock->methodA())->to_be('none');
@@ -74,9 +83,9 @@ describe("pecs", function(){
         it("should throw a given exception on a given argument list", function(){
             $mock = \pecs\mock('ClassToMock')
                 ->method('methodA')
-                    ->on()->throw()
-                    ->on(null)->throw('LengthException')
-                    ->on()->throw('LogicException', 'this one failed')
+                    ->on()->throws()
+                    ->on(null)->throws('LengthException')
+                    ->on()->throws('LogicException', 'this one failed')
                 ->create();
 
             expect($mock->methodA())->to_throw('Exception');
